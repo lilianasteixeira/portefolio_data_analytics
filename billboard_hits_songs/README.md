@@ -20,16 +20,5 @@ The purpose of this repository is:
     - ...
  - d3.js
 
-***
-
-### PowerBI - Billboard Hits Songs Analysis
-
-Now, you can see the first iteration in PowerBI Microsoft tool directly in this repository.
-Please check the following files:
- - power_bi_billboard_songs.pbix
- - power_bi_billboard_songs.pdf
-
-***
-
  Enjoy...
  Liliana Teixeira
