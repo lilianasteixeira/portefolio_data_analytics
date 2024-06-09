@@ -2,3 +2,5 @@ pandas
 plotly
 matplotlib
 seaborn
+flask
+kaleido
