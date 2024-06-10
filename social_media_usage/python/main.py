@@ -33,11 +33,8 @@ def correct_age_gender(df, age_col='Age', gender_col='Gender'):
     df[age_col], df[gender_col] = zip(*df.apply(correct_row, axis=1))
     return df
 
-# Get the directory where the script is located
-script_dir = os.path.dirname(os.path.abspath(__file__))
-
 # Define the absolute path to the CSV file
-csv_input_path = os.path.join(script_dir, '../test.csv')
+csv_input_path = os.path.join(os.path.dirname(__file__), '../test.csv')
 
 # Create DataFrame
 df = pd.read_csv(csv_input_path, encoding='utf-8')
@@ -57,79 +54,99 @@ total_likes = df['Likes_Received_Per_Day'].sum()
 total_messages = df['Messages_Sent_Per_Day'].sum()
 total_platforms = df['Platform'].nunique()
 
-# Calculate age range
-age_min = df['Age'].min()
-age_max = df['Age'].max()
+# Calculate likes and messages by platform
+likes_by_platform = df.groupby('Platform')['Likes_Received_Per_Day'].sum().reset_index()
+messages_by_platform = df.groupby('Platform')['Messages_Sent_Per_Day'].sum().reset_index()
+
+# Combine data for likes and messages
+agg_data = pd.merge(likes_by_platform, messages_by_platform, on='Platform')
 
 # Create a subplot figure
 fig = make_subplots(
-    rows=4, cols=2,
-    specs=[[{"type": "indicator"}, {"type": "indicator"}],
-           [{"type": "indicator"}, {"type": "indicator"}],
-           [{"colspan": 2}, None],
-           [{"colspan": 2}, None]],
-    subplot_titles=(
-        "Total Likes", "Total Messages",
-        "Total Platforms", "Age Range",
-        "Sum of Likes Received by Platform",
-        "Mean Messages Sent by Platform"
-    )
+    rows=3, cols=4,
+    specs=[
+        [{"type": "indicator"}, {"type": "indicator"}, {"type": "indicator"}, {"type": "indicator"}],  # Row for indicators
+        [{"colspan": 4}, None, None, None],  # Row for the first plot
+        [{"colspan": 4}, None, None, None]   # Row for the second plot
+    ],
 )
 
 # Add big numbers (indicators) with titles and labels
-fig.add_trace(go.Indicator(
-    mode="number",
-    value=total_likes,
-    #title={"text": "Total Likes"},
-    number={"font": {"size": 50}},
-), row=1, col=1)
+indicators = [
+    ("Total Likes", total_likes, 1, 1),
+    ("Total Messages", total_messages, 1, 2),
+    ("Total Platforms", total_platforms, 1, 3),
+    (f"Age Range: {df['Age'].min()} - {df['Age'].max()}", df['Age'].max(), 1, 4)
+]
 
-fig.add_trace(go.Indicator(
-    mode="number",
-    value=total_messages,
-    #title={"text": "Total Messages"},
-    number={"font": {"size": 50}},
-), row=1, col=2)
+for title, value, row, col in indicators:
+    fig.add_trace(
+        go.Indicator(
+            mode="number",
+            value=value,
+            title={"text": title, "font": {"size": 15}},
+            number={"font": {"size": 20}}
+        ),
+        row=row,
+        col=col
+    )
 
-fig.add_trace(go.Indicator(
-    mode="number",
-    value=total_platforms,
-    #title={"text": "Total Platforms"},
-    number={"font": {"size": 50}},
-), row=2, col=1)
+# Add line plots for likes and messages by platform
+for i, color in enumerate(['indianred', 'lightsalmon']):
+    fig.add_trace(
+        go.Scatter(
+            x=agg_data['Platform'],
+            y=agg_data.iloc[:, i + 1],  # Likes or Messages
+            mode='lines+markers',
+            name=agg_data.columns[i + 1],
+            line=dict(color=color, width=2),
+            marker=dict(color=color, size=8),
+        ),
+        row=2,
+        col=1
+    )
 
-# Display age range as text with title and label
-fig.add_trace(go.Indicator(
-    mode="number",
-    value=age_max,  # Using age_max just to utilize the number indicator
-    #title={"text": f"Age Range: {age_min} - {age_max}"},
-    number={"font": {"size": 50}, "suffix": ""},
-), row=2, col=2)
-
-# Add bar plots with titles and labels
-fig.add_trace(go.Bar(
-    x=df['Platform'],
-    y=df['Likes_Received_Per_Day'],
-    name="Sum of Likes Received Per Day",
-    marker_color='indianred'
-), row=3, col=1)
-
-fig.add_trace(go.Bar(
-    x=df['Platform'],
-    y=df['Messages_Sent_Per_Day'],
-    name="Mean Messages Sent Per Day",
-    marker_color='lightsalmon'
-), row=4, col=1)
-
-# Update layout with titles and labels
+# Add title to the line plot
 fig.update_layout(
     height=900,
-    showlegend=False,
-    title_text="Social Media Usage Dashboard",
+    showlegend=True,  # Show legend
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",  # Anchor legend to the bottom
+        y=0.64,  # Position it at the bottom of the page
+        xanchor="center",
+        x=0.5
+    ),
+    title={"text": "<b>Social Media Usage Dashboard</b>", "y": 0.95, "x": 0.5, "xanchor": "center", "yanchor": "top"},
+    margin=dict(t=30, b=20)  # Reduce bottom margin to reduce space
 )
 
-# Save as PDF in the same directory as the script
-pdf_output_path = os.path.join(script_dir, 'dashboard.pdf')
+# Add y-axis title to the line plot
+fig.update_yaxes(title_text='Total', row=2, col=1)
+
+# Add title to the line plot
+fig.update_layout(
+    annotations=[
+        dict(
+            xref='paper',
+            yref='paper',
+            x=0.5,
+            y=0.7,
+            xanchor='center',
+            yanchor='middle',
+            text='Total of Likes and Messages by Platform',
+            font=dict(size=15),
+            showarrow=False
+        )
+    ]
+)
+
+# Add x and y axis titles to the line plot
+fig.update_xaxes(title_text='Platform', row=2, col=1)
+fig.update_yaxes(title_text='Total', row=2, col=1)
+
+# Save as PDF
+pdf_output_path = os.path.join(os.path.dirname(__file__), 'dashboard.pdf')
 fig.write_image(pdf_output_path, engine="kaleido")
 
 print(f'Dashboard saved as {pdf_output_path}')
